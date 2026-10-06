@@ -1,0 +1,24 @@
+{
+  "name": "opencode-charts",
+  "version": "1.0.0",
+  "description": "Inline braille charts for the OpenCode v2 TUI — chart/spark code block renderers, zero dependencies",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hashd1ve/opencode-charts.git"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "tui",
+    "charts",
+    "braille",
+    "terminal",
+    "sparklines"
+  ],
+  "peerDependencies": {
+    "@opencode/plugin": "*",
+    "@opentui/core": "*"
+  }
+}
