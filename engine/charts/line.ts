@@ -74,20 +74,62 @@ const BAYER = [
 
 export function renderLine(spec: Spec, ctx: Ctx, mode: LineMode): ChartResult {
   const { theme } = ctx
-  const { series, kind } = toXY(readSeries(spec), { numeric: mode === "scatter" })
-  const valued = series.flatMap((s) => s.points.filter((p) => p.y !== null)) as (XYPoint & { y: number })[]
-  if (valued.length === 0) throw new Error("no numeric values in data")
+  const xy = toXY(readSeries(spec), { numeric: mode === "scatter" })
+  const { kind } = xy
+  let { series } = xy
+  if (xy.series.every((s) => s.points.every((p) => p.y === null))) throw new Error("no numeric values in data")
 
-  const unitStr = str(spec.unit)
-  const colors = series.map((s, i) => seriesColor(theme, i, s.color ?? (series.length === 1 ? spec.color : undefined)))
+  // drawdown: each point becomes its % distance below the running peak
+  const drawdown = spec.drawdown === true || spec.underwater === true
+  const peaks: { label: string; y: number }[][] = []
+  if (drawdown) {
+    series = series.map((s) => {
+      let peak: { label: string; y: number } | undefined
+      const track: { label: string; y: number }[] = []
+      const points = s.points.map((p) => {
+        if (p.y === null) return p
+        if (!peak || p.y > peak.y) peak = { label: p.label, y: p.y }
+        track.push(peak)
+        return { ...p, y: peak.y > 0 ? (p.y / peak.y - 1) * 100 : 0 }
+      })
+      peaks.push(track)
+      return { ...s, points }
+    })
+  }
+
+  // stacked area: every series on one x grid (missing = 0), drawn as bands
+  const stacked = mode === "area" && series.length > 1 && (spec.stacked === true || spec.stack === true || spec.percent === true)
+  const percent = stacked && spec.percent === true
+  let bands: { x: number; lo: number; hi: number }[][] = []
+  if (stacked) {
+    const xs = [...new Set(series.flatMap((s) => s.points.map((p) => p.x)))].sort((a, b) => a - b)
+    const at = series.map((s) => new Map(s.points.map((p) => [p.x, Math.max(0, p.y ?? 0)])))
+    const totals = xs.map((x) => at.reduce((a, m) => a + (m.get(x) ?? 0), 0))
+    const run = xs.map(() => 0)
+    bands = series.map((_, si) =>
+      xs.map((x, xi) => {
+        const v = at[si].get(x) ?? 0
+        const share = percent ? (totals[xi] > 0 ? (v / totals[xi]) * 100 : 0) : v
+        const lo = run[xi]
+        run[xi] += share
+        return { x, lo, hi: run[xi] }
+      }),
+    )
+  }
+
+  const valued = series.flatMap((s) => s.points.filter((p) => p.y !== null)) as (XYPoint & { y: number })[]
+  const unitStr = drawdown || percent ? "%" : str(spec.unit)
+  const colors = series.map((s, i) =>
+    seriesColor(theme, i, s.color ?? (series.length === 1 ? (spec.color ?? (drawdown ? theme.down : undefined)) : undefined)),
+  )
   const refs = readRefs(spec)
   const H = clampInt(spec.height, 3, 40, mode === "scatter" ? 12 : 10)
   const width = Math.min(ctx.width, clampInt(spec.width, 20, 400, ctx.width), MAX_WIDTH)
 
   /* ---- y domain ---- */
-  const ys = valued.map((p) => p.y).concat(refs.map((r) => r.y))
+  const ys = (stacked ? bands.flatMap((b) => b.map((p) => p.hi)).concat(0) : valued.map((p) => p.y)).concat(refs.map((r) => r.y))
   const yMin = optNum(spec.yMin ?? spec.ymin ?? spec.min)
-  const yMax = optNum(spec.yMax ?? spec.ymax ?? spec.max)
+  const yMax = optNum(spec.yMax ?? spec.ymax ?? spec.max) ?? (drawdown ? 0 : percent ? 100 : undefined)
   const wantLog = spec.log === true || spec.yScale === "log" || spec.scale === "log"
   const lo = Math.min(...ys)
   const hi = Math.max(...ys)
@@ -131,7 +173,29 @@ export function renderLine(spec: Spec, ctx: Ctx, mode: LineMode): ChartResult {
   const baseY = Math.round(yDot(baseVal))
   const dense = valued.length > 400
 
+  if (stacked) {
+    bands.forEach((band, si) => {
+      const color = colors[si]
+      for (let i = 1; i < band.length; i++) {
+        const a = band[i - 1]
+        const b = band[i]
+        const x0 = Math.round(xDot(a.x))
+        const x1 = Math.round(xDot(b.x))
+        for (let dx = x0; dx <= x1; dx++) {
+          const t = x1 === x0 ? 0 : (dx - x0) / (x1 - x0)
+          const top = Math.round(yDot(a.hi + (b.hi - a.hi) * t))
+          const bottom = Math.round(yDot(a.lo + (b.lo - a.lo) * t))
+          for (let dy = top + 1; dy <= bottom; dy++) {
+            if ((BAYER[dy & 3][dx & 3] + 0.5) / 16 < 0.5) canvas.dot(dx, dy, color, LAYER.fill)
+          }
+        }
+        canvas.line(xDot(a.x), yDot(a.hi), xDot(b.x), yDot(b.hi), color, LAYER.line)
+      }
+    })
+  }
+
   series.forEach((s, si) => {
+    if (stacked) return
     const color = colors[si]
     const pts = s.points
 
@@ -245,6 +309,16 @@ export function renderLine(spec: Spec, ctx: Ctx, mode: LineMode): ChartResult {
         const fit = regression(valued)
         if (fit) items.push(stat("r", fit.r.toFixed(2), theme))
       }
+    } else if (drawdown && series.length === 1) {
+      const pts = valued
+      let worst = pts[0]
+      for (const p of pts) if (p.y < worst.y) worst = p
+      const now = pts[pts.length - 1]
+      const track = peaks[0] ?? []
+      const worstPeak = track[pts.indexOf(worst)]
+      items.push(stat("max dd", `${fmtValue(worst.y, "%")} ${worst.label}`, theme, theme.down))
+      if (worstPeak) items.push(stat("from peak", worstPeak.label, theme))
+      items.push(stat("now", now.y >= -1e-9 ? "at peak" : fmtValue(now.y, "%"), theme, now.y >= -1e-9 ? theme.up : theme.down))
     } else if (series.length === 1) {
       const pts = valued
       const first = pts[0].y

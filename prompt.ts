@@ -15,7 +15,8 @@ This terminal renders fenced \`\`\`chart blocks holding a JSON spec as inline ch
 \`\`\`
 
 Types and data:
-- line | area | step: "data":[[label,value],…] (YYYY, YYYY-MM, YYYY-MM-DD and YYYY-Qn labels go on a time axis; null = gap), or "series":[{"name":"A","data":[…]},…]. Options: "log":true, "zero":true, "yMin"/"yMax", "refs":[{"y":2,"label":"target"}].
+- line | area | step: "data":[[label,value],…] (YYYY, YYYY-MM, YYYY-MM-DD and YYYY-Qn labels go on a time axis; null = gap), or "series":[{"name":"A","data":[…]},…]. Options: "log":true, "zero":true, "yMin"/"yMax", "refs":[{"y":2,"label":"target"}]; area with several series + "stacked":true (or "percent":true) = composition over time.
+- drawdown: prices as for line → % fall from the running peak, with max drawdown and its peak.
 - scatter: "data":[[x,y],…]; "trend":true adds a regression line and r².
 - bar (horizontal) / column (vertical): "data":{"A":450,"B":320} or [[label,value],…]; "sort":true; several "series" are grouped, "stacked":true stacks, "percent":true for 100% bars (bar only); "highlight":"A" (bar).
 - hist: "data":[raw values], optional "bins".
@@ -24,6 +25,8 @@ Types and data:
 - candle: "data":[[date,open,high,low,close,volume?],…].
 - pie | donut: "data":{"A":60,"B":40}.
 - gauge: "data":{"CPU":72,"RAM":45},"max":100, optional "thresholds":[60,85], "target".
+- stat: KPI tiles, "data":[{"label":"S&P 500","value":5832.9,"change":1.2,"spark":[…]},…] ("change" in %, or "delta" absolute, or "previous"; "lowerIsBetter":true flips colors).
+- dumbbell: before → after per category, "labels":["2023","2025"],"data":[["Fed",5.5,4.5],…] (or two "series").
 - box: "data":{"group":[raw values],…}.
 - waterfall: "data":[["Start",100],["Price",12],["Costs",-5]],"total":"End".
 - spark: "data":[numbers] (one line); with "series" → watchlist rows (last value, change).

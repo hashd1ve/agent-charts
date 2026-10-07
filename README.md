@@ -16,25 +16,7 @@ The model writes a JSON spec in a fenced ` ```chart ` block:
 
 and the plugin paints it inside a card that follows your theme (dark or light):
 
-```
-╭─ ◇ Inflation vs Fed target (YoY %) ──────────────────────────────────────╮
-│ ● CPI 2.7%  ● Core 2.9%  ┄ target 2%                                     │
-│ 4.0% ┤⠤⣀⣀⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁ │
-│      │   ⠉⠉⠉⠉⠉⠒⠤⣀                                                        │
-│ 3.5% ┤⠄⠄⠄⠄⠄⠄⠄⡠⢄⣀⡀⠉⠒⠤⣀⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄⠄ │
-│      │    ⢀⠔⠊   ⠈⠉⠑⠒⠢⠭⡑⠒⠢⠤⢄⣀⡀     ⣀⣀⠤⠤⠤⠤⠤⠤⠤⠤⠤⢄⣀⡀ ⢀⣀⡠⠤⣀                   │
-│      │⠤⠒⠒⠉⠁           ⠈⠑⢄⡀  ⠈⠉⠉⠉⠉⠉             ⠈⠉⠁    ⠉⠒⠤⣀               │
-│ 3.0% ┤⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠈⠉⠑⠒⠢⡀⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⠁⣀⠤⠒⠒⠊⠉⠉⠑⠢⠤⣀⠁⠑⠤⣀⣀⣀⣀⣀⠤⠤⠒⠒⠒⠒⠒ │
-│      │                        ⠈⠢⡀       ⢀⡠⠤⠔⠒⠉           ⠑⢄           ⡠⠔ │
-│ 2.5% ┤⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠈⠒⠤⠤⣀⡠⠔⠊⠁⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠂⠈⠢⣀⠂⠂⠂⠂⠂⠂⣀⠔⠊⠂⠂ │
-│      │                                                       ⠉⠉⠒⠒⠉⠉      │
-│ 2.0% ┤⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀⡀⢀⣀⡀⣀ │
-│      └┬──────────────┬──────────────┬───────────────┬──────────────────┬ │
-│       2024-01     2024-05        2024-09         2025-01         2025-06 │
-╰──────────────────────────────────────────────────────────────────────────╯
-```
-
-(The samples here are plain text. In the TUI every series, bar, cell and candle is colored from your theme.)
+<p align="center"><img src="docs/screenshots/line.png" alt="line chart with two series and a reference line" width="760"></p>
 
 ## Install
 
@@ -72,7 +54,8 @@ There's nothing to `npm install`. At runtime the plugin only uses modules that t
 | type | data | good for |
 |---|---|---|
 | `line` | `"data":[["2024-01",4.1],…]` or `"series":[{"name","data"},…]` | time series, trends, comparisons |
-| `area` | like `line`, filled with a dithered gradient | one series with a clear shape |
+| `area` | like `line`, filled with a dithered gradient; several series + `"stacked":true` / `"percent":true` stack them | one series with a clear shape, composition over time |
+| `drawdown` | prices, as for `line` | % fall from the running peak (max drawdown, its peak, where it is now) |
 | `step` | like `line`, value holds until the next point | policy rates, thresholds, tiers |
 | `scatter` | `"data":[[x,y],…]` | correlation (`"trend":true` adds a regression line and r²) |
 | `bar` | `"data":{"A":450,"B":320}` | ranking and comparison; negatives diverge from zero |
@@ -82,7 +65,9 @@ There's nothing to `npm install`. At runtime the plugin only uses modules that t
 | `calendar` | `"data":[["2026-03-01",v],…]` | daily activity, GitHub-style |
 | `candle` | `"data":[[date,o,h,l,c,volume?],…]` | OHLC with an optional volume pane |
 | `pie` / `donut` | `"data":{"A":60,"B":40}` | composition (more than 8 slices collapse into "Other"; `"aspect"` tunes roundness, default 1.15) |
-| `gauge` | `"data":{"CPU":72}`, `"max"`, `"thresholds"`, `"target"` | KPIs, progress, bullet charts |
+| `gauge` | `"data":{"CPU":72}`, `"max"`, `"thresholds"`, `"target"` | progress, bullet charts |
+| `stat` | `"data":[{"label","value","change","spark"},…]` | KPI tiles: value, colored change (`"lowerIsBetter"` flips it), sparkline |
+| `dumbbell` | `"labels":["2023","2025"],"data":[["Fed",5.5,4.5],…]` or two `series` | before → after per category |
 | `box` | `"data":{"group":[values],…}` or precomputed quartiles | comparing distributions |
 | `waterfall` | `"data":[["Start",100],["Price",12],["Cost",-5]]`, `"total"` | bridges (P&L, budget changes) |
 | `spark` | `"data":[…]`; with `"series"` it becomes a watchlist | one-liners, dashboards |
@@ -93,60 +78,22 @@ Multi-series `bar` and `column` charts are grouped by default. Add `"stacked":tr
 
 **Line family:** `log:true`, `zero:true`, `yMin`/`yMax`, `refs:[{"y":2,"label":"target"}]`, `trend:true`. Labels in `YYYY`, `YYYY-MM`, `YYYY-MM-DD` or `YYYY-Qn` form go on a real time axis, so uneven spacing is honest. Series of different lengths line up, and `null` leaves a gap.
 
-### More examples
+### Gallery
 
-```
-╭─ ◇ Sector returns YTD ───────────────────────────────────────────────────╮
-│ Tech                    ▕█████████████████████████████████████████ 18.4% │
-│ Financials              ▕█████████████████████▌                     9.7% │
-│ Health                  ▕█████████                                  4.1% │
-│ Materials               ▕██▌                                        1.2% │
-│ Utilities          ▕████▉                                          -2.3% │
-│ Energy     █████████████▉                                          -6.2% │
-╰──────────────────────────────────────────────────────────────────────────╯
-╭─ ◇ ACME daily ───────────────────────────────────────────────────────────╮
-│ $110 ┤· · · · · · · · · · ┃ ╿╵· ·┃┃ ┃ ╷╽·╽·┃┃ ╽ ╷ · ·╷╷ · · · · · · · ·  │
-│      │            ╻ ╻     ┃      ││ ┃ ┃╹   ╵╵ ╿ ┃  ╷ ┃┃                  │
-│      │            ┃ ┃   ╻ ┃                     ┃╻ ╽ ┃┃ ╽╻ ╻ ╻           │
-│ $105 ┤· · · · · ┃ ╿ ╹┃·╽┃ ╵ · · · · · · · · · · ·╹·╿· ╵ ╿╹·╵·┃╽ ╽ ╻ · ·  │
-│      │         ╽┃    ╵ ┃┃                                    ╵┃ ┃ ┃╽     │
-│ $100 ┤╽ · ╽╽·╽·┃╵ · · ·╿╿ · · · · · · · · · · · · · · · · · · │ ╵ ·┃·╽·╽ │
-│  vol │            ▂ ▄  ▇  ▂    ▂  ▆ ▄  ▄ ▃    ▇    █    ▁     ▅ ▆ ▅    █ │
-│      │█ █ ██ █ ██ █ ██ ██ █ ██ █ ██ █ ██ █ ██ █ ██ █ ██ ██ █ ██ █ ██ █ █ │
-│      └┬─────────┬─────────┬─────────┬─────────┬─────────┬──────────────┬ │
-│       08-03   08-09     08-15     08-21     08-27     09-02        09-11 │
-│ O $100.3  H $101.1  L $95.6  C $96.48  -3.77%                            │
-╰──────────────────────────────────────────────────────────────────────────╯
-╭─ ◇ Portfolio allocation ─────────────────────╮
-│    ▄▄██████▄▄                                │
-│  ▄████████████▄                              │
-│ ▄██▀▀      ▀███▄   ● Equities   61%  $61,000 │
-│ ████  $100k ████   ● Bonds      24%  $24,000 │
-│ ████        ████   ● Cash      9.0%   $9,000 │
-│ ▀███▄      ▄███▀   ● Gold      6.0%   $6,000 │
-│  ▀█▀██████████▀                              │
-│    ▀▀██████▀▀                                │
-╰──────────────────────────────────────────────╯
-╭─ ◇ Q3 targets ───────────────────────────────────────────────────────────╮
-│ Revenue ($M) ████████████████████████████████████▌   ┃     8.1 / 10  81% │
-│ New logos    █████████████████████████████████┃████▎        34 / 40  85% │
-╰──────────────────────────────────────────────────────────────────────────╯
-╭─ ◇ Operating income bridge ($M) ─────────────────────────────────────────╮
-│ FY2025 █████████████████████████████████████████████████▊            120 │
-│ Price                                                   ▕███████▎    +18 │
-│ Volume                                                          ▐███  +9 │
-│ FX                                                               ███  -7 │
-│ Costs                                                      ▐█████▏   -14 │
-│ FY2026 ████████████████████████████████████████████████████▎         126 │
-╰──────────────────────────────────────────────────────────────────────────╯
-╭─ ◇ Watchlist (30d) ──────────────────────────────────────────────────────╮
-│ AAPL  ▁▃▃▃▂▂▄▄▄▅▄▄▃▅▅▆▆▅▆▆▇▆▇▆▇▇████  $196.7  ▲ +10.8%                   │
-│ MSFT  █▆▇▆▅▅▆▆▇▅▅▆▄▃▄▅▃▄▅▁▄▄▁▃▄▂▃▃▅▃  $399.6  ▼ -3.49%                   │
-│ NVDA  ▂▁▃▃▃▄▄▄▄▄▄▅▄▅▅▅▅▆▆▅▆▆▆▇▇▇█▇▇▇  $150.5  ▲ +25.7%                   │
-╰──────────────────────────────────────────────────────────────────────────╯
-```
+Every type, rendered by [`scripts/screenshots.ts`](scripts/screenshots.ts) with the same engine on a cell grid like a terminal's (TokyoNight theme). In OpenCode and Claude Code the colors follow your own theme.
 
-Run `bun scripts/demo.ts` to see every type in full color in your terminal.
+<table>
+<tr><td width="50%"><img src="docs/screenshots/candle.png" alt="candle + volume"><br><sub><code>candle + volume</code></sub></td><td width="50%"><img src="docs/screenshots/heat.png" alt="heat (diverging)"><br><sub><code>heat (diverging)</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/stat.png" alt="stat (KPI tiles)"><br><sub><code>stat (KPI tiles)</code></sub></td><td width="50%"><img src="docs/screenshots/area-stacked.png" alt="area, stacked"><br><sub><code>area, stacked</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/column.png" alt="column, grouped"><br><sub><code>column, grouped</code></sub></td><td width="50%"><img src="docs/screenshots/bar.png" alt="bar, diverging"><br><sub><code>bar, diverging</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/drawdown.png" alt="drawdown"><br><sub><code>drawdown</code></sub></td><td width="50%"><img src="docs/screenshots/dumbbell.png" alt="dumbbell"><br><sub><code>dumbbell</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/donut.png" alt="donut"><br><sub><code>donut</code></sub></td><td width="50%"><img src="docs/screenshots/gauge.png" alt="gauge"><br><sub><code>gauge</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/waterfall.png" alt="waterfall"><br><sub><code>waterfall</code></sub></td><td width="50%"><img src="docs/screenshots/box.png" alt="box"><br><sub><code>box</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/calendar.png" alt="calendar"><br><sub><code>calendar</code></sub></td><td width="50%"><img src="docs/screenshots/watchlist.png" alt="spark (watchlist)"><br><sub><code>spark (watchlist)</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/hist.png" alt="hist"><br><sub><code>hist</code></sub></td><td width="50%"><img src="docs/screenshots/scatter.png" alt="scatter + trend"><br><sub><code>scatter + trend</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/area-log.png" alt="area, log scale"><br><sub><code>area, log scale</code></sub></td><td width="50%"><img src="docs/screenshots/step.png" alt="step"><br><sub><code>step</code></sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/bar-stacked.png" alt="bar, stacked"><br><sub><code>bar, stacked</code></sub></td><td width="50%"><img src="docs/screenshots/pie.png" alt="pie"><br><sub><code>pie</code></sub></td></tr>
+</table>
 
 ### Forgiving input
 
@@ -181,6 +128,7 @@ bun install          # dev only: types, OpenTUI for the render tests
 bun test             # engine tests + OpenTUI integration tests (headless renderer)
 bun run typecheck
 bun scripts/demo.ts [filter] [--width 80] [--light] [--plain] [--file spec.json]
+bun scripts/screenshots.ts [filter]   # docs/screenshots/*.png (headless Chrome + ImageMagick)
 bun run sync:claude  # copy engine/ + prompt.ts into the Claude Code plugin
 bun run test:claude  # check the copy is in sync, then `claude plugin test claude-code`
 ```

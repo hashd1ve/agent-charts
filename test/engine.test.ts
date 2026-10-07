@@ -363,3 +363,54 @@ test("crossing series never paint dots in the other series' color", async () => 
   // A's 4 dots (bits 0x01|0x02|0x04|0x40) and not B's (0x08)
   expect(cell.ch.charCodeAt(0) - 0x2800).toBe(0x47)
 })
+
+describe("v2.2 types", () => {
+  const rows = (spec: Record<string, unknown>, width = 80) => text(buildChart(spec, { width }))
+
+  test("stacked area: the top band ends at the sum of the series", () => {
+    const res = buildChart({ type: "area", stacked: true, stats: false, series: [{ name: "a", data: [["2025-01", 10], ["2025-02", 10]] }, { name: "b", data: [["2025-01", 5], ["2025-02", 5]] }] }, { width: 60 })
+    const r = text(res)
+    expect(r[0]).toContain("● a 10")
+    // the axis tops out at a round number covering 15
+    expect(r.some((l) => /^\s*(15|16|20)\s/.test(l))).toBe(true)
+  })
+
+  test("percent stacked area runs 0–100%", () => {
+    const r = rows({ type: "area", percent: true, series: [{ name: "a", data: [1, 3] }, { name: "b", data: [3, 1] }] })
+    expect(r.join("\n")).toContain("100%")
+  })
+
+  test("drawdown reports the worst fall and its peak", () => {
+    const r = rows({ type: "drawdown", data: [["2024-01", 100], ["2024-02", 120], ["2024-03", 60], ["2024-04", 90], ["2024-05", 130]] })
+    const footer = r.at(-1)!
+    expect(footer).toContain("max dd -50% 2024-03")
+    expect(footer).toContain("from peak 2024-02")
+    expect(footer).toContain("now at peak")
+  })
+
+  test("stat tiles keep the given precision and color the change", () => {
+    const res = buildChart({ type: "stat", data: [{ label: "FX", value: 1.0842, change: -0.3 }, { label: "Cost", value: 10, change: 5, lowerIsBetter: true }] }, { width: 60 })
+    const r = text(res).join("\n")
+    expect(r).toContain("1.0842")
+    expect(r).toContain("▼ -0.3%")
+    const runs = res.rows.flat()
+    expect(runs.find((x) => x.text === "+5%")?.fg).toBe(DARK.down) // up is bad here
+    expect(runs.find((x) => x.text === "-0.3%")?.fg).toBe(DARK.down)
+  })
+
+  test("stat tiles fit the width, wrapping into rows", () => {
+    const res = buildChart({ type: "stat", data: { a: 1, b: 2, c: 3, d: 4, e: 5 } }, { width: 40 })
+    for (const row of res.rows) expect(rowWidth(row)).toBeLessThanOrEqual(40)
+    expect(res.rows.length % 5).toBe(0)
+  })
+
+  test("dumbbell: both values, the change colored, from rows or two series", () => {
+    const res = buildChart({ type: "dumbbell", data: [["a", 1, 3], ["b", 4, 2]] }, { width: 60 })
+    const r = text(res)
+    expect(r.find((l) => l.startsWith("a"))).toContain("1 → 3")
+    const bar = res.rows.find((row) => row[0]?.text.startsWith("b"))!.find((x) => x.text.includes("━"))
+    expect(bar?.fg).toBe(DARK.down)
+    const two = rows({ type: "dumbbell", series: [{ name: "2023", data: { x: 1 } }, { name: "2025", data: { x: 2 } }] })
+    expect(two[0]).toContain("● 2023")
+  })
+})

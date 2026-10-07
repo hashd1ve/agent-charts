@@ -238,6 +238,7 @@ export function toXY(raw: RawSeries[], opts: { numeric?: boolean } = {}): { seri
 const ALIASES: Record<string, string> = {
   line: "line", lines: "line", linechart: "line", timeseries: "line", series: "line",
   area: "area", stackedarea: "area",
+  drawdown: "drawdown", underwater: "drawdown", dd: "drawdown",
   step: "step", steps: "step", stairs: "step",
   scatter: "scatter", points: "scatter", xy: "scatter", bubble: "scatter",
   bar: "bar", bars: "bar", barh: "bar", hbar: "bar", horizontalbar: "bar", barchart: "bar",
@@ -247,15 +248,17 @@ const ALIASES: Record<string, string> = {
   candle: "candle", candles: "candle", candlestick: "candle", ohlc: "candle",
   spark: "spark", sparkline: "spark", sparklines: "spark", sparks: "spark", trend: "spark",
   pie: "pie", donut: "pie", doughnut: "pie", ring: "pie",
-  gauge: "gauge", gauges: "gauge", meter: "gauge", progress: "gauge", bullet: "gauge", kpi: "gauge",
+  gauge: "gauge", gauges: "gauge", meter: "gauge", progress: "gauge", bullet: "gauge",
+  stat: "stat", stats: "stat", kpi: "stat", kpis: "stat", tiles: "stat", cards: "stat", scorecard: "stat", metric: "stat", metrics: "stat",
+  dumbbell: "dumbbell", dumbell: "dumbbell", barbell: "dumbbell", slope: "dumbbell", beforeafter: "dumbbell", range: "dumbbell",
   box: "box", boxplot: "box", boxes: "box", whisker: "box",
   waterfall: "waterfall", bridge: "waterfall", cascade: "waterfall",
   calendar: "calendar", cal: "calendar", contributions: "calendar", activity: "calendar",
 }
 
 export const TYPES = [
-  "line", "area", "step", "scatter", "bar", "column", "hist", "heat", "calendar",
-  "candle", "pie", "gauge", "box", "waterfall", "spark",
+  "line", "area", "step", "scatter", "drawdown", "bar", "column", "hist", "heat", "calendar",
+  "candle", "pie", "gauge", "stat", "dumbbell", "box", "waterfall", "spark",
 ]
 
 export function resolveType(spec: Spec): string {

@@ -4,12 +4,14 @@
 import { renderBar, renderWaterfall } from "./charts/bar"
 import { renderBox } from "./charts/box"
 import { renderCandle } from "./charts/candle"
+import { renderDumbbell } from "./charts/dumbbell"
 import { renderColumn, renderHist } from "./charts/column"
 import { renderGauge } from "./charts/gauge"
 import { renderCalendar, renderHeat } from "./charts/heat"
 import { renderLine } from "./charts/line"
 import { renderPie } from "./charts/pie"
 import { renderSpark } from "./charts/spark"
+import { renderStat } from "./charts/stat"
 import { clipRow } from "./grid"
 import { parseRelaxedJSON } from "./json"
 import { num, parseDate, resolveType } from "./spec"
@@ -43,6 +45,8 @@ function render(type: string, spec: Spec, ctx: Ctx): ChartResult {
     case "step":
     case "scatter":
       return renderLine(spec, ctx, type)
+    case "drawdown":
+      return renderLine({ ...spec, drawdown: true }, ctx, "area")
     case "bar":
       return renderBar(spec, ctx)
     case "column":
@@ -65,6 +69,10 @@ function render(type: string, spec: Spec, ctx: Ctx): ChartResult {
       return renderWaterfall(spec, ctx)
     case "spark":
       return renderSpark(spec, ctx)
+    case "stat":
+      return renderStat(spec, ctx)
+    case "dumbbell":
+      return renderDumbbell(spec, ctx)
   }
   throw new Error(`unsupported type "${type}"`)
 }

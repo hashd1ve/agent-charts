@@ -1,6 +1,6 @@
 {
   "name": "charts",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Inline terminal charts for Claude Code: ```chart blocks in Claude's replies render as line, bar, column, heatmap, calendar, candle, pie, gauge, box, waterfall and sparkline charts",
   "author": {
     "name": "hashd1ve"

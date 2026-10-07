@@ -1,6 +1,6 @@
 {
   "name": "agent-charts",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Inline terminal charts for coding agents (OpenCode v2 TUI and Claude Code): ```chart blocks render as line, area, bar, column, heatmap, calendar, candlestick, pie, gauge, box plot, waterfall and sparkline charts, with zero runtime dependencies",
   "type": "module",
   "license": "MIT",
@@ -40,7 +40,8 @@
     "demo": "bun scripts/demo.ts",
     "install-plugin": "bun scripts/install.ts",
     "sync:claude": "bun scripts/sync-claude-mod.ts",
-    "test:claude": "bun scripts/sync-claude-mod.ts --check && claude plugin test claude-code"
+    "test:claude": "bun scripts/sync-claude-mod.ts --check && claude plugin test claude-code",
+    "screenshots": "bun scripts/screenshots.ts"
   },
   "peerDependencies": {
     "@opencode/plugin": ">=2.0.23",

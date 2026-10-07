@@ -104,6 +104,23 @@ export const EXAMPLES: { name: string; spec: Record<string, unknown> }[] = [
     },
   },
   {
+    name: "area stacked",
+    spec: {
+      type: "area",
+      title: "Revenue mix ($M)",
+      stacked: true,
+      series: [
+        { name: "Cloud", data: m18.map((m, i) => [m, +(20 + i * 1.6 + normal()).toFixed(1)]) },
+        { name: "Licenses", data: m18.map((m, i) => [m, +(18 - i * 0.3 + normal() * 0.6).toFixed(1)]) },
+        { name: "Services", data: m18.map((m, i) => [m, +(8 + i * 0.2 + normal() * 0.5).toFixed(1)]) },
+      ],
+    },
+  },
+  {
+    name: "drawdown",
+    spec: { type: "drawdown", title: "BTC drawdown from peak", data: btcSeries },
+  },
+  {
     name: "bar",
     spec: { type: "bar", title: "Units sold", data: { Laptops: 450, Monitors: 320, Keyboards: 210, Mice: 180, Docks: 95 }, sort: true },
   },
@@ -180,6 +197,29 @@ export const EXAMPLES: { name: string; spec: Record<string, unknown> }[] = [
   {
     name: "gauge target",
     spec: { type: "gauge", title: "Q3 targets", data: [{ label: "Revenue ($M)", value: 8.1, max: 10, target: 9 }, { label: "New logos", value: 34, max: 40, target: 30 }] },
+  },
+  {
+    name: "stat",
+    spec: {
+      type: "stat",
+      title: "Markets today",
+      data: [
+        { label: "S&P 500", value: 5832.9, change: 1.2, spark: [5700, 5720, 5690, 5750, 5780, 5810, 5833] },
+        { label: "EUR/USD", value: 1.0842, change: -0.3, spark: [1.09, 1.088, 1.087, 1.086, 1.085, 1.084] },
+        { label: "US 10Y", value: 4.21, unit: "%", delta: 0.05, lowerIsBetter: true },
+        { label: "BTC", value: 72800, unit: "$", change: 2.4, spark: [69800, 71200, 70100, 72400, 73900, 72800] },
+      ],
+    },
+  },
+  {
+    name: "dumbbell",
+    spec: {
+      type: "dumbbell",
+      title: "Policy rates 2023 → 2025",
+      unit: "%",
+      labels: ["2023", "2025"],
+      data: [["Fed", 5.5, 4.5], ["ECB", 4.0, 2.0], ["BoE", 5.25, 4.0], ["BoJ", -0.1, 0.5], ["SNB", 1.75, 0]],
+    },
   },
   {
     name: "box",

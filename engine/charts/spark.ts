@@ -12,7 +12,7 @@ import type { ChartResult, Ctx, Row, Spec, Theme } from "../types"
 const BLOCKS = "▁▂▃▄▅▆▇█"
 
 /** Averages buckets so the series fits in `w` columns (nulls stay gaps). */
-function resample(values: (number | null)[], w: number): (number | null)[] {
+export function resample(values: (number | null)[], w: number): (number | null)[] {
   if (values.length <= w) return values
   const out: (number | null)[] = []
   for (let i = 0; i < w; i++) {
@@ -24,7 +24,7 @@ function resample(values: (number | null)[], w: number): (number | null)[] {
   return out
 }
 
-function sparkline(values: (number | null)[], lo?: number, hi?: number): string {
+export function sparkline(values: (number | null)[], lo?: number, hi?: number): string {
   const nums = values.filter((v): v is number => v !== null)
   const min = lo ?? Math.min(...nums)
   const max = hi ?? Math.max(...nums)
