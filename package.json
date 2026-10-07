@@ -1,7 +1,7 @@
 {
   "name": "opencode-charts",
-  "version": "1.0.0",
-  "description": "Inline braille charts for the OpenCode v2 TUI — chart/spark code block renderers, zero dependencies",
+  "version": "2.0.0",
+  "description": "Inline terminal charts for the OpenCode v2 TUI — line, area, bar, column, heatmap, candles, pie, gauges, box plots, waterfalls and more, rendered as ```chart code blocks with zero runtime dependencies",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -15,10 +15,35 @@
     "charts",
     "braille",
     "terminal",
-    "sparklines"
+    "sparklines",
+    "heatmap",
+    "candlestick"
   ],
+  "exports": {
+    ".": "./index.ts",
+    "./tui": "./tui.ts"
+  },
+  "files": [
+    "index.ts",
+    "tui.ts",
+    "render.ts",
+    "chart.ts",
+    "prompt.ts",
+    "engine"
+  ],
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "demo": "bun scripts/demo.ts",
+    "install-plugin": "bun scripts/install.ts"
+  },
   "peerDependencies": {
-    "@opencode/plugin": "*",
-    "@opentui/core": "*"
+    "@opencode/plugin": ">=2.0.23",
+    "@opentui/core": ">=0.5.14"
+  },
+  "devDependencies": {
+    "@opentui/core": "0.5.14",
+    "@types/bun": "^1.3.0",
+    "typescript": "^5.9.0"
   }
 }
