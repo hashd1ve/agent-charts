@@ -34,27 +34,51 @@ export function renderPie(spec: Spec, ctx: Ctx): ChartResult {
   const donut = spec.donut === true || /donut|doughnut|ring/i.test(String(spec.type ?? "")) || num(spec.hole) !== null
   const hole = donut ? Math.max(0.2, Math.min(0.85, num(spec.hole) ?? 0.55)) : 0
 
-  const rows = clampInt(spec.height, 4, 20, 8)
+  const rows = clampInt(spec.height, 4, 20, 10)
   const width = Math.min(ctx.width, clampInt(spec.width, 20, 400, ctx.width), 120)
-  const D = rows * 2
+  // a half-block pixel is one column wide and half a row tall; terminal rows
+  // run ~15% taller than two columns, so the disc gets that many more columns
+  const aspect = Math.max(0.6, Math.min(2, num(spec.aspect) ?? 1.15))
+  const H = rows * 2
+  const D = Math.round(H * aspect)
   const canvas = new PixelCanvas(D, rows)
-  const R = D / 2
+  const R = H / 2
   const bounds: number[] = []
   let acc = 0
   for (const s of slices) {
     acc += s.value / total
     bounds.push(acc)
   }
-  for (let py = 0; py < D; py++) {
+  const sliceAt = (x: number, y: number): number => {
+    const dx = (x - D / 2) / aspect
+    const dy = y - H / 2
+    const r = Math.hypot(dx, dy)
+    if (r > R || r < hole * R) return -1
+    let a = Math.atan2(dx, -dy) / (2 * Math.PI)
+    if (a < 0) a += 1
+    const i = bounds.findIndex((b) => a < b)
+    return i === -1 ? slices.length - 1 : i
+  }
+  // 3×3 supersampling: a pixel is painted when most of it is inside the disc,
+  // in the slice covering most of it, which smooths the rim and the seams
+  const SS = 3
+  for (let py = 0; py < H; py++) {
     for (let px = 0; px < D; px++) {
-      const dx = px + 0.5 - R
-      const dy = py + 0.5 - R
-      const r = Math.hypot(dx, dy)
-      if (r > R || r < hole * R) continue
-      let a = Math.atan2(dx, -dy) / (2 * Math.PI)
-      if (a < 0) a += 1
-      const i = bounds.findIndex((b) => a < b)
-      canvas.set(px, py, slices[i === -1 ? slices.length - 1 : i].color)
+      const votes = new Map<number, number>()
+      let inside = 0
+      for (let sy = 0; sy < SS; sy++) {
+        for (let sx = 0; sx < SS; sx++) {
+          const i = sliceAt(px + (sx + 0.5) / SS, py + (sy + 0.5) / SS)
+          if (i < 0) continue
+          inside++
+          votes.set(i, (votes.get(i) ?? 0) + 1)
+        }
+      }
+      if (inside * 2 <= SS * SS) continue
+      let best = 0
+      let bestN = -1
+      for (const [i, n] of votes) if (n > bestN) [best, bestN] = [i, n]
+      canvas.set(px, py, slices[best]!.color)
     }
   }
 
@@ -81,9 +105,9 @@ export function renderPie(spec: Spec, ctx: Ctx): ChartResult {
   const out: Row[] = [...notes.top]
   const grid = new CellGrid(side ? Math.min(width, D + 3 + legendW) : Math.min(width, D), rows)
   canvas.blit(grid, 0, 0)
-  if (donut && hole * D >= 6) {
+  if (donut && hole * H >= 6) {
     const label = fmtValue(total, unitStr, { compact: true })
-    if (strWidth(label) <= Math.floor(hole * D) - 2) grid.text(Math.round(R - strWidth(label) / 2), Math.floor(rows / 2) - (rows % 2 === 0 ? 1 : 0), label, theme.text, { bold: true })
+    if (strWidth(label) <= Math.floor(hole * D) - 2) grid.text(Math.round(D / 2 - strWidth(label) / 2), Math.floor(rows / 2) - (rows % 2 === 0 ? 1 : 0), label, theme.text, { bold: true })
   }
   const gridRows = grid.rows()
   if (side) {

@@ -81,7 +81,7 @@ There's nothing to `npm install`. At runtime the plugin only uses modules that t
 | `heat` | `"xLabels","yLabels","z":[[row],…]` or `"data":[[x,y,v],…]` | matrices; mixed signs use a diverging scale (monthly returns) |
 | `calendar` | `"data":[["2026-03-01",v],…]` | daily activity, GitHub-style |
 | `candle` | `"data":[[date,o,h,l,c,volume?],…]` | OHLC with an optional volume pane |
-| `pie` / `donut` | `"data":{"A":60,"B":40}` | composition (more than 8 slices collapse into "Other") |
+| `pie` / `donut` | `"data":{"A":60,"B":40}` | composition (more than 8 slices collapse into "Other"; `"aspect"` tunes roundness, default 1.15) |
 | `gauge` | `"data":{"CPU":72}`, `"max"`, `"thresholds"`, `"target"` | KPIs, progress, bullet charts |
 | `box` | `"data":{"group":[values],…}` or precomputed quartiles | comparing distributions |
 | `waterfall` | `"data":[["Start",100],["Price",12],["Cost",-5]]`, `"total"` | bridges (P&L, budget changes) |
