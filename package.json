@@ -41,7 +41,8 @@
     "install-plugin": "bun scripts/install.ts",
     "sync:claude": "bun scripts/sync-claude-mod.ts",
     "test:claude": "bun scripts/sync-claude-mod.ts --check && claude plugin test claude-code",
-    "screenshots": "bun scripts/screenshots.ts"
+    "screenshots": "bun scripts/screenshots.ts",
+    "promo": "bun scripts/promo.ts"
   },
   "peerDependencies": {
     "@opencode/plugin": ">=2.0.23",
@@ -50,6 +51,7 @@
   "devDependencies": {
     "@opentui/core": "0.5.14",
     "@types/bun": "^1.3.0",
+    "puppeteer-core": "^25.12.0",
     "typescript": "^5.9.0"
   }
 }

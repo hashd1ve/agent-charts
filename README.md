@@ -129,6 +129,7 @@ bun test             # engine tests + OpenTUI integration tests (headless render
 bun run typecheck
 bun scripts/demo.ts [filter] [--width 80] [--light] [--plain] [--file spec.json]
 bun scripts/screenshots.ts [filter]   # docs/screenshots/*.png (headless Chrome + ImageMagick)
+bun scripts/promo.ts [out.mp4]        # 17 s promo video, 1080p H.264 (puppeteer-core + ffmpeg)
 bun run sync:claude  # copy engine/ + prompt.ts into the Claude Code plugin
 bun run test:claude  # check the copy is in sync, then `claude plugin test claude-code`
 ```
