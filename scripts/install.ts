@@ -27,7 +27,7 @@ if (existsSync(target)) {
   const entries = readdirSync(target)
   const looksLikeCharts = entries.includes("tui.ts") && (entries.includes("chart.ts") || entries.includes("engine"))
   if (entries.length > 0 && !looksLikeCharts) {
-    fail(`${target} exists and doesn't look like an opencode-charts install — pass the plugin directory itself (…/plugins/charts)`)
+    fail(`${target} exists and doesn't look like an agent-charts install — pass the plugin directory itself (…/plugins/charts)`)
   }
 }
 
@@ -41,7 +41,7 @@ if (existsSync(target) && readdirSync(target).length > 0) {
 mkdirSync(target, { recursive: true })
 for (const f of FILES) cpSync(join(root, f), join(target, f), { recursive: true })
 rmSync(join(target, ".loaded"), { force: true })
-console.log(`installed opencode-charts → ${target}`)
+console.log(`installed agent-charts → ${target}`)
 
 const cli = join(configDir, "cli.json")
 let listed = false

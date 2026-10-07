@@ -1,23 +1,26 @@
 {
-  "name": "opencode-charts",
+  "name": "agent-charts",
   "version": "2.0.0",
-  "description": "Inline terminal charts for the OpenCode v2 TUI — line, area, bar, column, heatmap, candles, pie, gauges, box plots, waterfalls and more, rendered as ```chart code blocks with zero runtime dependencies",
+  "description": "Inline terminal charts for coding agents (OpenCode v2 TUI and Claude Code): ```chart blocks render as line, area, bar, column, heatmap, calendar, candlestick, pie, gauge, box plot, waterfall and sparkline charts, with zero runtime dependencies",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hashd1ve/opencode-charts.git"
+    "url": "git+https://github.com/hashd1ve/agent-charts.git"
   },
   "keywords": [
+    "agents",
+    "braille",
+    "candlestick",
+    "charts",
+    "claude-code",
+    "claude-code-plugin",
+    "heatmap",
     "opencode",
     "opencode-plugin",
-    "tui",
-    "charts",
-    "braille",
-    "terminal",
     "sparklines",
-    "heatmap",
-    "candlestick"
+    "terminal",
+    "tui"
   ],
   "exports": {
     ".": "./index.ts",
@@ -35,7 +38,9 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "demo": "bun scripts/demo.ts",
-    "install-plugin": "bun scripts/install.ts"
+    "install-plugin": "bun scripts/install.ts",
+    "sync:claude": "bun scripts/sync-claude-mod.ts",
+    "test:claude": "bun scripts/sync-claude-mod.ts --check && claude plugin test claude-code"
   },
   "peerDependencies": {
     "@opencode/plugin": ">=2.0.23",

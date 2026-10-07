@@ -1,0 +1,14 @@
+{
+  "name": "agent-charts",
+  "owner": {
+    "name": "hashd1ve"
+  },
+  "description": "Inline terminal charts for coding agents: render ```chart blocks as charts in the terminal",
+  "plugins": [
+    {
+      "name": "charts",
+      "source": "./claude-code",
+      "description": "Inline terminal charts: ```chart blocks in Claude's replies render as charts in the terminal"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
-# opencode-charts
+# agent-charts
 
-Inline charts for the [OpenCode](https://opencode.ai) v2 TUI. Ask your agent for a chart and it draws it right in the conversation, using braille dots, eighth blocks and half-block pixels on the terminal grid. There are no images, no external tools and no runtime dependencies, so it works over SSH too.
+Inline charts for coding agents in the terminal: a plugin for the [OpenCode](https://opencode.ai) v2 TUI and another for [Claude Code](https://claude.com/claude-code), sharing one chart engine. Ask your agent for a chart and it draws it right in the conversation, using braille dots, eighth blocks and half-block pixels on the terminal grid. There are no images, no external tools and no runtime dependencies, so it works over SSH too.
+
+(Formerly `opencode-charts`; the old GitHub URLs redirect here.)
 
 The model writes a JSON spec in a fenced ` ```chart ` block:
 
@@ -12,7 +14,7 @@ The model writes a JSON spec in a fenced ` ```chart ` block:
 ```
 ````
 
-and the plugin paints it inside a card that follows your OpenCode theme (dark or light):
+and the plugin paints it inside a card that follows your theme (dark or light):
 
 ```
 ╭─ ◇ Inflation vs Fed target (YoY %) ──────────────────────────────────────╮
@@ -36,10 +38,22 @@ and the plugin paints it inside a card that follows your OpenCode theme (dark or
 
 ## Install
 
+### Claude Code
+
+At the prompt of a Claude Code session:
+
+```
+/plugin install charts --marketplace hashd1ve/agent-charts
+```
+
+Answer `y` to add the marketplace, then pick a scope. The plugin draws ```` ```chart ```` blocks in Claude's replies (in the terminal; other surfaces show the JSON as code) and adds the chart cheat sheet to the system prompt, so Claude knows the format. Colors map onto Claude Code's theme keys (`claude`, `success`, `error`, `subtle`…), so charts follow `/theme`.
+
+### OpenCode
+
 1. Clone the repo and copy the plugin into your OpenCode config:
 
    ```sh
-   git clone https://github.com/hashd1ve/opencode-charts && cd opencode-charts
+   git clone https://github.com/hashd1ve/agent-charts && cd agent-charts
    bun scripts/install.ts            # → ~/.config/opencode/plugins/charts (backs up any previous copy)
    ```
 
@@ -156,6 +170,7 @@ The plugin's server half (`index.ts`) appends a short cheat sheet (`prompt.ts`) 
 - `render.ts` bridges to OpenTUI. Each chart becomes a single `TextRenderable` with `StyledText` content (foreground and background per run) inside a rounded card. The card measures its real width, which changes when the sidebar opens or the terminal is resized, and redraws the chart to fit. Narrow charts get a snug card.
 - `tui.ts` is the TUI plugin entry. It registers the `chart` and `spark` languages and maps OpenCode's resolved theme tokens (`categorical`, `text`, `feedback`, `background`) onto the chart palette. It imports `@opentui/core` itself and passes the classes on to `render.ts`, because the host only swaps that import for its own runtime instance in the entry file. Renderables from a second copy of the library can't paint into the host's buffers.
 - `index.ts` is the server plugin entry (prompt injection). It has no runtime imports.
+- `claude-code/` is the Claude Code plugin (a hooks module). A `ui.render` hook on `AssistantMessage` splits each reply into markdown and chart blocks, draws the markdown with Claude Code's own `Markdown` element and each chart as rows of colored `Text`, and a `prompt.compose` hook adds the cheat sheet. A plugin may only import files from its own folder, so `bun scripts/sync-claude-mod.ts` copies `engine/` and `prompt.ts` into `claude-code/hooks/`; `--check` fails when the copy is stale.
 
 Plugin options (`cli.json`): `maxWidth` (default 140), `languages` (default `["chart","spark"]`), `toast` (announce on load), `prompt` (default `true`).
 
@@ -166,6 +181,8 @@ bun install          # dev only: types, OpenTUI for the render tests
 bun test             # engine tests + OpenTUI integration tests (headless renderer)
 bun run typecheck
 bun scripts/demo.ts [filter] [--width 80] [--light] [--plain] [--file spec.json]
+bun run sync:claude  # copy engine/ + prompt.ts into the Claude Code plugin
+bun run test:claude  # check the copy is in sync, then `claude plugin test claude-code`
 ```
 
 ## License

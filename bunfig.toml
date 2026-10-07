@@ -1,0 +1,3 @@
+[test]
+# claude-code/tests runs under `claude plugin test`, not bun
+root = "./test"
