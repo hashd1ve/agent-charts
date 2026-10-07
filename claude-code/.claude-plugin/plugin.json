@@ -1,8 +1,11 @@
 {
   "name": "charts",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Inline terminal charts for Claude Code: ```chart blocks in Claude's replies render as line, bar, column, heatmap, calendar, candle, pie, gauge, box, waterfall and sparkline charts",
-  "author": { "name": "hashd1ve" },
+  "author": {
+    "name": "hashd1ve"
+  },
   "repository": "https://github.com/hashd1ve/agent-charts",
-  "license": "MIT"
+  "license": "MIT",
+  "types": "./types/index.d.ts"
 }

@@ -1,6 +1,6 @@
 {
   "name": "agent-charts",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Inline terminal charts for coding agents (OpenCode v2 TUI and Claude Code): ```chart blocks render as line, area, bar, column, heatmap, calendar, candlestick, pie, gauge, box plot, waterfall and sparkline charts, with zero runtime dependencies",
   "type": "module",
   "license": "MIT",

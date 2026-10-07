@@ -12,6 +12,12 @@ import type { CellGrid } from "./grid"
 const BIT_COL0 = [0x01, 0x02, 0x04, 0x40]
 const BIT_COL1 = [0x08, 0x10, 0x20, 0x80]
 
+function popcount(n: number): number {
+  let c = 0
+  for (let v = n; v; v &= v - 1) c++
+  return c
+}
+
 /** Paint priority: a higher layer owns the cell color; grid dots yield to anything. */
 export const LAYER = { grid: 1, fill: 2, ref: 3, line: 4, point: 5 } as const
 
@@ -23,6 +29,8 @@ export class BrailleCanvas {
   private readonly bits: Uint8Array
   private readonly layer: Uint8Array
   private readonly color: (string | undefined)[]
+  /** Per-color dot masks of the marks (refs, lines, points) in each cell. */
+  private readonly marks: (Map<string, { bits: number; layer: number }> | undefined)[]
 
   constructor(cols: number, rows: number) {
     this.cols = Math.max(1, cols)
@@ -32,6 +40,7 @@ export class BrailleCanvas {
     this.bits = new Uint8Array(this.cols * this.rows)
     this.layer = new Uint8Array(this.cols * this.rows)
     this.color = new Array(this.cols * this.rows)
+    this.marks = new Array(this.cols * this.rows)
   }
 
   dot(x: number, y: number, color: string, layer: number = LAYER.line): void {
@@ -44,10 +53,41 @@ export class BrailleCanvas {
     if (layer === LAYER.grid && cur > LAYER.grid) return
     if (cur === LAYER.grid && layer > LAYER.grid) this.bits[i] = 0
     this.bits[i] |= bit
+    if (layer >= LAYER.ref) {
+      let m = this.marks[i]
+      if (!m) this.marks[i] = m = new Map()
+      const prev = m.get(color)
+      m.set(color, { bits: (prev?.bits ?? 0) | bit, layer: Math.max(prev?.layer ?? 0, layer) })
+    }
     if (layer >= cur) {
       this.layer[i] = layer
       this.color[i] = color
     }
+  }
+
+  /**
+   * A cell holds one color, so where marks of several colors meet (two series
+   * crossing or running close) the cell goes to the top layer's color with
+   * the most dots there, and the others' dots leave the cell: a tiny gap in
+   * the losing line instead of dots painted in the wrong color.
+   */
+  private resolve(i: number): { bits: number; color: string | undefined } {
+    const m = this.marks[i]
+    if (!m || m.size < 2) return { bits: this.bits[i], color: this.color[i] }
+    let best: string | undefined
+    let bestLayer = -1
+    let bestN = -1
+    for (const [c, v] of m) {
+      const n = popcount(v.bits)
+      if (v.layer > bestLayer || (v.layer === bestLayer && (n > bestN || (n === bestN && c === this.color[i])))) {
+        best = c
+        bestLayer = v.layer
+        bestN = n
+      }
+    }
+    let others = 0
+    for (const [c, v] of m) if (c !== best) others |= v.bits
+    return { bits: (this.bits[i] & ~others) | m.get(best!)!.bits, color: best }
   }
 
   /** Bresenham line on the dot grid. */
@@ -97,7 +137,8 @@ export class BrailleCanvas {
       for (let c = 0; c < this.cols; c++) {
         const i = r * this.cols + c
         if (this.bits[i] === 0) continue
-        grid.set(ox + c, oy + r, String.fromCharCode(0x2800 + this.bits[i]), this.color[i])
+        const { bits, color } = this.resolve(i)
+        grid.set(ox + c, oy + r, String.fromCharCode(0x2800 + bits), color)
       }
     }
   }

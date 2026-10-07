@@ -348,3 +348,18 @@ describe("review regressions", () => {
     expect(text(pie).join("\n")).toContain("%")
   })
 })
+
+test("crossing series never paint dots in the other series' color", async () => {
+  const { BrailleCanvas, LAYER } = await import("../engine/canvas")
+  const { CellGrid } = await import("../engine/grid")
+  const c = new BrailleCanvas(1, 1)
+  // series A: a full column of dots; series B (drawn last): a single dot
+  for (let y = 0; y < 4; y++) c.dot(0, y, "#aaaaaa", LAYER.line)
+  c.dot(1, 0, "#bbbbbb", LAYER.line)
+  const g = new CellGrid(1, 1)
+  c.blit(g, 0, 0)
+  const cell = g.get(0, 0)!
+  expect(cell.fg).toBe("#aaaaaa")
+  // A's 4 dots (bits 0x01|0x02|0x04|0x40) and not B's (0x08)
+  expect(cell.ch.charCodeAt(0) - 0x2800).toBe(0x47)
+})

@@ -7,11 +7,16 @@
  * and the theme's semantic colors map onto Claude Code theme keys so charts
  * follow /theme.
  */
+import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
+import type { ChartBlock } from '../types'
 import { buildChart, parseBlock } from './engine/index'
 import { strWidth } from './engine/text'
 import type { ChartResult, Row, Theme } from './engine/types'
 import { CHART_PROMPT } from './prompt'
+
+const blocks = atom({ plugin: 'charts', key: 'blocks' } as const, {} as Record<string, ChartBlock>)
+const nextKey = atom({ plugin: 'charts', key: 'next' } as const, 1)
 
 /* ------------------------------------------------------------------ */
 /* Theme: hex values for the engine's color math, theme keys to paint  */
@@ -75,6 +80,78 @@ type Segment = { kind: 'md'; text: string } | { kind: 'chart'; lang: string; bod
 const OPEN = /^\s{0,3}(`{3,}|~{3,})\s*(chart|spark)\s*$/
 const HAS_CHART = /(^|\n)\s{0,3}(`{3,}|~{3,})\s*(chart|spark)\s*(\n|$)/
 
+/** The line that closes a block opened by `fence` (same char, at least as long). */
+function closerFor(fence: string): RegExp {
+  return new RegExp(`^\\s{0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`)
+}
+
+export type LiveBlock = { key: string; lang: string; body: string; closed: boolean }
+type LiveState = { closer?: RegExp; open?: { key: string; lang: string; body: string[] } }
+
+/** The line the live display shows in place of a block, and finds again at draw time. */
+export const placeholder = (lang: string, key: string) => `◇ ${lang} ${key} · drawing…`
+const PLACEHOLDER = /^◇ (chart|spark) (\d+) · drawing…$/
+
+/**
+ * While a reply streams, Claude Code shows its raw text, and the
+ * AssistantMessage drawing then receives that shown text, not the stored one.
+ * So the live display swaps each chart block for a keyed placeholder line
+ * and hands the block back (`finished`) to be kept; the drawing puts it back.
+ * The stored message and what the model sees are untouched.
+ */
+export function liveDisplay(
+  state: LiveState,
+  delta: string,
+  alloc: () => string,
+  final = false,
+): { text: string; changed: boolean; finished: LiveBlock[] } {
+  const out: string[] = []
+  const finished: LiveBlock[] = []
+  let changed = false
+  // flushes are whole lines: keep the final newline apart so hiding a line hides it whole
+  const newline = delta.endsWith('\n')
+  const lines = (newline ? delta.slice(0, -1) : delta).split('\n')
+  for (const line of lines) {
+    if (state.closer && state.open) {
+      changed = true
+      if (state.closer.test(line)) {
+        finished.push({ ...state.open, body: state.open.body.join('\n'), closed: true })
+        state.closer = undefined
+        state.open = undefined
+      } else state.open.body.push(line)
+      continue
+    }
+    const m = OPEN.exec(line)
+    if (m) {
+      changed = true
+      state.closer = closerFor(m[1]!)
+      state.open = { key: alloc(), lang: m[2]!, body: [] }
+      out.push(placeholder(m[2]!, state.open.key))
+      continue
+    }
+    out.push(line)
+  }
+  if (final && state.open) {
+    finished.push({ ...state.open, body: state.open.body.join('\n'), closed: false })
+    state.closer = undefined
+    state.open = undefined
+  }
+  return { text: out.length ? out.join('\n') + (newline ? '\n' : '') : '', changed, finished }
+}
+
+/** Puts kept blocks back where the live display left their placeholders. */
+export function restoreBlocks(text: string, blocks: Record<string, { lang: string; body: string; closed: boolean }>): string {
+  if (!text.includes(' · drawing…')) return text
+  return text
+    .split('\n')
+    .map(line => {
+      const m = PLACEHOLDER.exec(line)
+      const b = m ? blocks[m[2]!] : undefined
+      return b ? ['```' + b.lang, b.body, ...(b.closed ? ['```'] : [])].join('\n') : line
+    })
+    .join('\n')
+}
+
 export function splitReply(text: string): Segment[] {
   const lines = text.split('\n')
   const out: Segment[] = []
@@ -89,8 +166,7 @@ export function splitReply(text: string): Segment[] {
       md.push(lines[i]!)
       continue
     }
-    const fence = m[1]!
-    const close = new RegExp(`^\\s{0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`)
+    const close = closerFor(m[1]!)
     const body: string[] = []
     let closed = false
     let j = i + 1
@@ -134,6 +210,31 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // live stream: show a placeholder instead of the chart JSON (display only),
+  // keeping each block in session state for the drawing to put back
+  const live = new Map<string, LiveState>()
+  on('classic.MessageDisplay', async ($, e, next) => {
+    const res = await next(e)
+    const state = live.get(e.message_id) ?? {}
+    let counter = await read($, nextKey)
+    const first = counter
+    const { text, changed, finished } = liveDisplay(state, res.displayContent ?? e.delta, () => String(counter++), e.final)
+    if (counter !== first) await update($, nextKey, n => Math.max(n, counter))
+    if (finished.length) {
+      await update($, blocks, all => {
+        const kept = { ...all }
+        for (const b of finished) kept[b.key] = { lang: b.lang, body: b.body, closed: b.closed }
+        // a session's worth: keep the newest 500
+        const keys = Object.keys(kept)
+        for (const k of keys.slice(0, Math.max(0, keys.length - 500))) delete kept[k]
+        return kept
+      })
+    }
+    if (e.final) live.delete(e.message_id)
+    else live.set(e.message_id, state)
+    return changed ? { ...res, displayContent: text } : res
+  })
+
   // teach the model the ```chart format
   on('prompt.compose', async ($, e, next) => {
     const res = await next(e)
@@ -141,9 +242,12 @@ export const register: Register = on => {
     return { sections: [...res.sections, { id: 'charts:format', text: CHART_PROMPT, scope: 'session' as const }] }
   })
 
-  on('ui.render', { component: 'AssistantMessage' }, ($, e, next) => {
-    if (e.surface !== 'terminal' || !HAS_CHART.test(e.props.text)) return next(e)
-    const segments = splitReply(e.props.text)
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    if (e.surface !== 'terminal') return next(e)
+    // a reply shown live carries placeholders; the stored one (a resumed session) the blocks
+    const text = e.props.text.includes(' · drawing…') ? restoreBlocks(e.props.text, await read($, blocks)) : e.props.text
+    if (!HAS_CHART.test(text)) return next(e)
+    const segments = splitReply(text)
     if (!segments.some(s => s.kind === 'chart')) return next(e)
 
     const { Box, Text, Markdown } = $.ui.resolve(e)
