@@ -38,6 +38,22 @@ describe('splitReply', () => {
     expect(splitReply('10. item\n\n    ```chart\n    1 2 3\n    ```\n').map(s => s.kind)).toEqual(['md', 'chart'])
     expect(splitReply('para\n\n    ```chart\n    1 2 3\n    ```\n').map(s => s.kind)).toEqual(['md'])
   })
+
+  test('a fence on the list-marker line closes normally, so later charts still draw', () => {
+    for (const item of ['- ```python', '1. ```bash']) {
+      expect(splitReply(`${item}\n   x = 1\n   \`\`\`\n\nDone:\n\n\`\`\`chart\n1 2\n\`\`\`\n`).map(s => s.kind)).toEqual(['md', 'chart'])
+    }
+  })
+
+  test('replies with CRLF line ends still draw', () => {
+    expect(splitReply('hola\r\n```chart\r\n1 2 3\r\n```\r\nfin').map(s => s.kind)).toEqual(['md', 'chart', 'md'])
+  })
+
+  test('a column-0 fence or a thematic break ends the list, so indented code stays code', () => {
+    const indented = '\n\n    ```chart\n    1 2 3\n    ```\n'
+    expect(splitReply('- a\n```\ncode\n```' + indented).map(s => s.kind)).toEqual(['md'])
+    expect(splitReply('* * *' + indented).map(s => s.kind)).toEqual(['md'])
+  })
 })
 
 describe('system prompt', () => {

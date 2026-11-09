@@ -437,6 +437,20 @@ describe("extreme input", () => {
     expect(res.rows.length).toBeGreaterThan(0)
   })
 
+  test("stacked negative columns clipped by the axis or overflowing finish", () => {
+    for (const spec of [
+      { type: "column", stacked: true, yMin: -1, yMax: 1, height: 5, series: [{ name: "a", data: [-1e15] }] },
+      { type: "column", stacked: true, height: 5, series: [{ name: "a", data: [-1e308] }, { name: "b", data: [-1e308] }] },
+    ]) expect(buildChart(spec, { width: 60 }).rows.length).toBeGreaterThan(0)
+  })
+
+  test("scientific ticks on a narrow range stay distinct", () => {
+    const ticks = [1e16, 1.005e16, 1.01e16, 1.015e16, 1.02e16]
+    const f = tickFormatter(ticks, 5e13)
+    expect(new Set(ticks.map(f)).size).toBe(ticks.length)
+    expect(f(1.005e16)).toBe("1.005e16")
+  })
+
   test("a regression that overflows is left out instead of printing NaN", () => {
     const res = buildChart({ type: "scatter", trend: true, data: [[1, 1e308], [2, 1.7e308], [3, 1e307]] }, { width: 60 })
     expect(text(res).join("\n")).not.toContain("NaN")

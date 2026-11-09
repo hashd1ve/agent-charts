@@ -77,9 +77,10 @@ const THEMES = {
 
 type Segment = { kind: 'md'; text: string } | { kind: 'chart'; lang: string; body: string; closed: boolean }
 
-const FENCE = /^([ \t]*)(`{3,}|~{3,})(.*)$/
-const HAS_CHART = /(^|\n)[ \t]*(`{3,}|~{3,})[ \t]*(chart|spark)\s*(\n|$)/
-const LIST_ITEM = /^\s*(?:[-*+]|\d{1,9}[.)])\s/
+const FENCE = /^([ \t]*)(`{3,}|~{3,})([^\n]*)$/
+const HAS_CHART = /(^|\n)[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)?(`{3,}|~{3,})[ \t]*(chart|spark)\s*(\n|$)/
+const LIST_MARKER = /^\s*(?:[-*+]|\d{1,9}[.)])\s+/
+const THEMATIC_BREAK = /^\s*([-*_])(?:\s*\1){2,}\s*$/
 
 /** The line that closes a block opened by `fence` at `indent` (same char, at least as long). */
 function closerFor(fence: string, indent: number): RegExp {
@@ -99,16 +100,23 @@ function scan(state: Scan, line: string): { closer: RegExp; lang: 'chart' | 'spa
     if (state.outer.test(line)) state.outer = undefined
     return undefined
   }
-  const m = FENCE.exec(line)
+  if (THEMATIC_BREAK.test(line)) {
+    state.list = false
+    return undefined
+  }
+  const marker = LIST_MARKER.exec(line)
+  if (marker) state.list = true
+  // a fence can start on the marker's own line ("- ```python"): measure it as indent
+  const m = FENCE.exec(marker ? ' '.repeat(marker[0].length) + line.slice(marker[0].length) : line)
   if (m && (m[1]!.length <= 3 || state.list) && !(m[2]![0] === '`' && m[3]!.includes('`'))) {
+    if (m[1]!.length === 0) state.list = false
     const closer = closerFor(m[2]!, m[1]!.length)
     const info = m[3]!.trim()
     if (info === 'chart' || info === 'spark') return { closer, lang: info }
     state.outer = closer
     return undefined
   }
-  if (LIST_ITEM.test(line)) state.list = true
-  else if (line.trim() && !/^\s/.test(line)) state.list = false
+  if (!marker && line.trim() && !/^\s/.test(line)) state.list = false
   return undefined
 }
 

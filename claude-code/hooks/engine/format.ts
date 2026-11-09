@@ -37,8 +37,8 @@ const SUFFIXES: [number, string][] = [
 const SCIENTIFIC_FROM = 1e15
 
 /** 1e22, 2.5e17, 0. */
-function scientific(v: number): string {
-  return v === 0 ? "0" : v.toExponential(2).replace(/\.?0+e/, "e").replace("e+", "e")
+function scientific(v: number, digits = 2): string {
+  return v === 0 ? "0" : v.toExponential(digits).replace(/\.?0+e/, "e").replace("e+", "e")
 }
 
 /** Decimals needed to write `step` exactly (0.25 → 2, 2.5 → 1, 50 → 0). */
@@ -57,7 +57,11 @@ export function decimalsOf(step: number): number {
 export function tickFormatter(ticks: number[], step: number, unit = ""): (v: number) => string {
   const maxAbs = Math.max(0, ...ticks.map(Math.abs))
   // past the largest suffix ("10000000000T"), each tick carries its own exponent
-  if (maxAbs >= SCIENTIFIC_FROM) return (v: number) => withUnit(Number.isFinite(v) ? scientific(v) : "–", unit)
+  if (maxAbs >= SCIENTIFIC_FROM) {
+    // enough digits to keep neighbouring ticks apart on a narrow range
+    const digits = Math.min(6, Math.max(2, decimalsOf(step / 10 ** Math.floor(Math.log10(maxAbs)))))
+    return (v: number) => withUnit(Number.isFinite(v) ? scientific(v, digits) : "–", unit)
+  }
   let div = 1
   let suf = ""
   if (maxAbs >= 1e4) {

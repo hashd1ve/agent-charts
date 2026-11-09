@@ -150,7 +150,9 @@ function drawColumns(o: ColumnInput): { rows: Row[]; plotW: number } {
       vstack(grid, slotX, bw, base, pos)
       let down = 0
       for (const sgm of neg) {
-        vbarDown(grid, slotX, base + 1 + Math.floor(down), sgm.h, sgm.color, bw)
+        // clipped at the bottom of the plot: `sgm.h` can be astronomical when yMin/yMax cut the data
+        const top = base + 1 + Math.floor(down)
+        vbarDown(grid, slotX, top, Math.min(sgm.h, Math.max(0, H - top)), sgm.color, bw)
         down += sgm.h
       }
       const total = series.reduce((a, s) => a + (s.values[i] ?? 0), 0)
