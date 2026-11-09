@@ -143,6 +143,21 @@ describe('live streaming display', () => {
     expect(restoreBlocks(shown, {})).toBe(shown)
   })
 
+  test('overlapping flushes of one message still share its state', async ($, on) => {
+    on('classic.MessageDisplay', () => ({})) // the engine beneath: no rewrite of its own
+    const base = { turn_id: 't2', message_id: 'm2' }
+    // after a tool call the rest of a reply often lands at once: the second flush starts before the first ends
+    const [a, b] = await Promise.all([
+      $.classic.MessageDisplay({ ...base, index: 0, final: false, delta: '```chart\n' }),
+      $.classic.MessageDisplay({ ...base, index: 1, final: true, delta: '{"type":"bar","title":"Race","data":{"a":1}}\n```' }),
+    ])
+    expect(a.displayContent).toMatch(/^◇ chart \d+ · drawing…\n$/)
+    expect(b.displayContent).toBe('')
+    const ui = await $.ui.mount(reply(`${a.displayContent}${b.displayContent}`))
+    expect(await ui.find({ type: 'Text', text: /◇ Race/ })).toBeDefined()
+    await ui.unmount()
+  })
+
   test('streamed reply: placeholder while streaming, chart once drawn', async ($, on) => {
     on('classic.MessageDisplay', () => ({})) // the engine beneath: no rewrite of its own
     const base = { turn_id: 't1', message_id: 'm1', final: false }

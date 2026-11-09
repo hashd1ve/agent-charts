@@ -242,28 +242,38 @@ export const register: Register = on => {
   })
 
   // live stream: show a placeholder instead of the chart JSON (display only),
-  // keeping each block in session state for the drawing to put back
-  const live = new Map<string, LiveState>()
-  on('classic.MessageDisplay', async ($, e, next) => {
-    const res = await next(e)
-    const state = live.get(e.message_id) ?? {}
-    let counter = await read($, nextKey)
-    const first = counter
-    const { text, changed, finished } = liveDisplay(state, res.displayContent ?? e.delta, () => String(counter++), e.final)
-    if (counter !== first) await update($, nextKey, n => Math.max(n, counter))
-    if (finished.length) {
-      await update($, blocks, all => {
-        const kept = { ...all }
-        for (const b of finished) kept[b.key] = { lang: b.lang, body: b.body, closed: b.closed }
-        // a session's worth: keep the newest 500
-        const keys = Object.keys(kept)
-        for (const k of keys.slice(0, Math.max(0, keys.length - 500))) delete kept[k]
-        return kept
-      })
+  // keeping each block in session state for the drawing to put back.
+  // Flushes overlap (after a tool call the rest of a reply often lands at once),
+  // so each message's flushes run strictly in turn over one shared state.
+  const live = new Map<string, { state: LiveState; turn: Promise<unknown> }>()
+  on('classic.MessageDisplay', ($, e, next) => {
+    const entry = live.get(e.message_id) ?? { state: {}, turn: Promise.resolve() }
+    live.set(e.message_id, entry)
+    const flush = async () => {
+      const res = await next(e)
+      let counter = await read($, nextKey)
+      const first = counter
+      const { text, changed, finished } = liveDisplay(entry.state, res.displayContent ?? e.delta, () => String(counter++), e.final)
+      if (counter !== first) await update($, nextKey, n => Math.max(n, counter))
+      if (finished.length) {
+        await update($, blocks, all => {
+          const kept = { ...all }
+          for (const b of finished) kept[b.key] = { lang: b.lang, body: b.body, closed: b.closed }
+          // a session's worth: keep the newest 500
+          const keys = Object.keys(kept)
+          for (const k of keys.slice(0, Math.max(0, keys.length - 500))) delete kept[k]
+          return kept
+        })
+      }
+      return changed ? { ...res, displayContent: text } : res
     }
-    if (e.final) live.delete(e.message_id)
-    else live.set(e.message_id, state)
-    return changed ? { ...res, displayContent: text } : res
+    const result = entry.turn.then(flush, flush)
+    entry.turn = result
+    if (e.final) {
+      const forget = () => void live.delete(e.message_id)
+      result.then(forget, forget)
+    }
+    return result
   })
 
   // teach the model the ```chart format
