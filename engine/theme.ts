@@ -107,9 +107,15 @@ function ramp(stops: string[]): (t: number) => string {
   }
 }
 
-/** Low → high, t ∈ [0,1]: faint tint → primary → green → yellow. */
+const isCool = (hex: string) => {
+  const [r, , b] = hexToRgb(hex)
+  return b > r
+}
+
+/** Low → high, t ∈ [0,1]: faint tint → cool color → green → yellow. */
 export function sequential(theme: Theme): (t: number) => string {
-  const p = theme.palette[0]
+  // a warm primary (Claude Code's orange) would pass through muddy browns on its way to green
+  const p = theme.palette.find(isCool) ?? theme.palette[0]
   return ramp([mix(theme.background, p, 0.22), p, theme.up, theme.warn])
 }
 

@@ -7,6 +7,7 @@ import { parseRelaxedJSON } from "../engine/json"
 import { logDomain, niceDomain } from "../engine/scale"
 import { parseDate, readSeries, resolveType, toPairs, toXY } from "../engine/spec"
 import { strWidth, truncate } from "../engine/text"
+import { sequential } from "../engine/theme"
 import type { ChartResult } from "../engine/types"
 
 const text = (res: ChartResult) => res.rows.map((r) => r.map((x) => x.text).join(""))
@@ -412,6 +413,18 @@ describe("v2.2 types", () => {
     expect(bar?.fg).toBe(DARK.down)
     const two = rows({ type: "dumbbell", series: [{ name: "2023", data: { x: 1 } }, { name: "2025", data: { x: 2 } }] })
     expect(two[0]).toContain("● 2023")
+  })
+})
+
+describe("sequential scale", () => {
+  test("starts from a cool color even when the theme's primary is warm", () => {
+    const f = sequential({ ...DARK, palette: ["#D77757", "#4782C8"] })
+    expect(f(1 / 3).toLowerCase()).toBe("#4782c8")
+  })
+
+  test("keeps a theme whose primary is already cool", () => {
+    const p = DARK.palette[0]
+    expect(sequential({ ...DARK, palette: [p, "#4782C8"] })(1 / 3).toLowerCase()).toBe(p.toLowerCase())
   })
 })
 
