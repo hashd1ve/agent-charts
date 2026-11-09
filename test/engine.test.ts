@@ -414,3 +414,39 @@ describe("v2.2 types", () => {
     expect(two[0]).toContain("● 2023")
   })
 })
+
+describe("extreme input", () => {
+  test("values past the T suffix switch to scientific notation", () => {
+    expect(fmtValue(999e12)).toBe("999T")
+    expect(fmtValue(1e22)).toBe("1e22")
+    expect(fmtValue(2.5e17, "$")).toBe("$2.5e17")
+    const f = tickFormatter([0, 5e21, 1e22], 5e21)
+    expect([f(0), f(5e21), f(1e22)]).toEqual(["0", "5e21", "1e22"])
+  })
+
+  test("a log axis at the edge of the float range stays finite and finishes", () => {
+    const top = logDomain(1e307, 1.7e308)
+    expect(Number.isFinite(top.hi)).toBe(true)
+    expect(logDomain(5e-324, 1e-320).lo).toBeGreaterThan(0)
+    const res = buildChart({ type: "line", log: true, data: [1e308, 1.7e308, 1e307] }, { width: 60 })
+    expect(res.rows.length).toBeGreaterThan(0)
+  })
+
+  test("columns whose total overflows stay inside the plot", () => {
+    const res = buildChart({ type: "column", height: 1, data: [["a", 1e308], ["b", 1.7e308]] }, { width: 60 })
+    expect(res.rows.length).toBeGreaterThan(0)
+  })
+
+  test("a regression that overflows is left out instead of printing NaN", () => {
+    const res = buildChart({ type: "scatter", trend: true, data: [[1, 1e308], [2, 1.7e308], [3, 1e307]] }, { width: 60 })
+    expect(text(res).join("\n")).not.toContain("NaN")
+  })
+
+  test("control characters in labels and titles never reach the terminal", () => {
+    const res = buildChart({ type: "bar", title: "a\u001b[31mb", data: [["x\ny\tz\u001b[2J", 1], ["w", 2]] }, { width: 60 })
+    expect(res.title).toBe("a[31mb")
+    // biome-ignore lint: the point of the test
+    for (const line of text(res)) expect(line).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/)
+    expect(text(res).join("\n")).toContain("xyz")
+  })
+})

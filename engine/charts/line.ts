@@ -52,6 +52,7 @@ function regression(pts: { x: number; y: number }[]): { slope: number; intercept
   if (vx === 0) return undefined
   const slope = (n * sxy - sx * sy) / vx
   const r = vy === 0 ? 0 : (n * sxy - sx * sy) / Math.sqrt(vx * vy)
+  if (!Number.isFinite(slope) || !Number.isFinite(r)) return undefined // the sums overflowed
   return { slope, intercept: (sy - slope * sx) / n, r }
 }
 

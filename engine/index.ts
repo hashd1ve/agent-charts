@@ -35,7 +35,16 @@ export function buildChart(rawSpec: unknown, opts: BuildOptions = {}): ChartResu
   }
   const ctx: Ctx = { width: Math.max(20, Math.floor(opts.width ?? 80)), theme }
   const res = render(resolveType(spec), spec, ctx)
-  return { ...res, rows: res.rows.map((r) => clipRow(r, ctx.width)) }
+  return {
+    ...res,
+    title: res.title === undefined ? undefined : stripControl(res.title),
+    rows: res.rows.map((r) => clipRow(r.map((run) => ({ ...run, text: stripControl(run.text) })), ctx.width)),
+  }
+}
+
+/** Labels come from the data: newlines or escape sequences must not reach the terminal. */
+function stripControl(s: string): string {
+  return s.replace(/[\u0000-\u001f\u007f-\u009f]/g, "")
 }
 
 function render(type: string, spec: Spec, ctx: Ctx): ChartResult {

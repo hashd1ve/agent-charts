@@ -134,6 +134,8 @@ bun run sync:claude  # copy engine/ + prompt.ts into the Claude Code plugin
 bun run test:claude  # check the copy is in sync, then `claude plugin test claude-code`
 ```
 
+Claude Code updates plugins by version, so a release must bump `version` in `claude-code/.claude-plugin/plugin.json`. Without it, `claude plugin update` reports nothing to do.
+
 ## License
 
 MIT

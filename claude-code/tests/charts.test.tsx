@@ -26,6 +26,31 @@ describe('splitReply', () => {
   test('other code fences are left alone', () => {
     expect(splitReply('```ts\nconst a = 1\n```').map(s => s.kind)).toEqual(['md'])
   })
+
+  test('a chart block inside another code fence is an example, not a chart', () => {
+    for (const text of ['````\n```chart\n{"data":[1]}\n```\n````', '~~~\n```chart\n{"data":[1]}\n```\n~~~']) {
+      expect(splitReply(text).map(s => s.kind)).toEqual(['md'])
+    }
+    expect(splitReply('```ts\nx\n```\n```chart\n1 2\n```').map(s => s.kind)).toEqual(['md', 'chart'])
+  })
+
+  test('a fence indented past 3 columns opens a chart only inside a list', () => {
+    expect(splitReply('10. item\n\n    ```chart\n    1 2 3\n    ```\n').map(s => s.kind)).toEqual(['md', 'chart'])
+    expect(splitReply('para\n\n    ```chart\n    1 2 3\n    ```\n').map(s => s.kind)).toEqual(['md'])
+  })
+})
+
+describe('system prompt', () => {
+  test('teaches the format only where charts are drawn', async ($, on) => {
+    on('prompt.compose', () => ({ sections: [] })) // the engine beneath
+    const model = 'claude-test'
+    const ids = async (surfaces: ('terminal' | 'desktop')[]) =>
+      (await $.prompt.compose({ model, promptModel: model, surfaces, tools: [], outputStyle: null, traits: [] })).sections.map(s => s.id)
+    expect(await ids(['terminal'])).toContain('charts:format')
+    expect(await ids(['terminal', 'desktop'])).toContain('charts:format')
+    expect(await ids(['desktop'])).not.toContain('charts:format')
+    expect(await ids([])).not.toContain('charts:format')
+  })
 })
 
 describe('AssistantMessage', () => {
@@ -92,6 +117,24 @@ describe('live streaming display', () => {
       changed: false,
       finished: [],
     })
+  })
+
+  test('a chart block inside another code fence streams as plain text', () => {
+    const text = '````\n```chart\n{"data":[1]}\n```\n````\n'
+    expect(liveDisplay({}, text, counter())).toEqual({ text, changed: false, finished: [] })
+  })
+
+  test('a reply that ends inside a block closes it, so it is drawn or reported', () => {
+    const state = {}
+    const alloc = counter()
+    liveDisplay(state, '```chart\n{"type":"bar",\n', alloc)
+    const { finished } = liveDisplay(state, '', alloc, true)
+    expect(finished.map(b => b.closed)).toEqual([true])
+  })
+
+  test('a restored block whose body holds backticks survives the round trip', () => {
+    const shown = restoreBlocks(placeholder('chart', '7'), { '7': { lang: 'chart', body: 'a,1\n```,2', closed: true } })
+    expect(splitReply(shown)).toEqual([{ kind: 'chart', lang: 'chart', body: 'a,1\n```,2', closed: true }])
   })
 
   test('restoreBlocks puts the JSON back where the placeholder is', () => {

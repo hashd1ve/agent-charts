@@ -19,7 +19,7 @@ async function mount(markdown: string, width = 100, height = 40) {
   const render = createChartBlockRenderer(OpenTUI, renderer as CliRenderer)
   const md = new MarkdownRenderable(renderer, {
     content: markdown,
-    syntaxStyle: SyntaxStyle.create(),
+    syntaxStyle: SyntaxStyle.create(renderer.nativeScene),
     renderNode: createMarkdownCodeBlockRenderer({ chart: render, spark: render }),
     width: "100%",
   })

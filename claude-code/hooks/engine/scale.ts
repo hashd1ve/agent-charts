@@ -73,8 +73,10 @@ export function niceDomain(
 /** Log₁₀ domain for strictly positive data (prices over many years, growth). */
 export function logDomain(min: number, max: number, opts: { fixedLo?: number; fixedHi?: number } = {}): Domain {
   const pad = (max / min) ** 0.04
-  const lo = opts.fixedLo && opts.fixedLo > 0 ? opts.fixedLo : min / pad
-  const hi = opts.fixedHi && opts.fixedHi > 0 ? opts.fixedHi : max === min ? max * 10 : max * pad
+  // the padding can overflow at the edge of the float range; the tick loop below needs finite ends
+  const inRange = (v: number) => Math.min(Number.MAX_VALUE, Math.max(Number.MIN_VALUE, v))
+  const lo = inRange(opts.fixedLo && opts.fixedLo > 0 ? opts.fixedLo : min / pad)
+  const hi = inRange(opts.fixedHi && opts.fixedHi > 0 ? opts.fixedHi : max === min ? max * 10 : max * pad)
   const decades = Math.log10(hi) - Math.log10(lo)
   const mult = decades <= 0.6 ? [1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9] : decades <= 1.2 ? [1, 2, 5] : decades <= 3 ? [1, 3] : [1]
   const ticks: number[] = []

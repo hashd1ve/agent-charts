@@ -33,7 +33,8 @@ function vstack(grid: CellGrid, x: number, w: number, baseRow: number, segs: Seg
     const i = bounds.findIndex((b) => h < b - 1e-9)
     return parts[i === -1 ? parts.length - 1 : i].color
   }
-  const rows = Math.ceil(total - 1e-9)
+  // never past the top of the grid: overflowing data can make `total` astronomical
+  const rows = Math.min(baseRow + 1, Math.ceil(total - 1e-9))
   for (let r = 0; r < Math.max(1, rows); r++) {
     const bottomColor = colorAt(r + 1e-6)
     const cellTop = Math.min(total, r + 1)

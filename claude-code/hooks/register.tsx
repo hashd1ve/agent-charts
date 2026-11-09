@@ -77,16 +77,43 @@ const THEMES = {
 
 type Segment = { kind: 'md'; text: string } | { kind: 'chart'; lang: string; body: string; closed: boolean }
 
-const OPEN = /^\s{0,3}(`{3,}|~{3,})\s*(chart|spark)\s*$/
-const HAS_CHART = /(^|\n)\s{0,3}(`{3,}|~{3,})\s*(chart|spark)\s*(\n|$)/
+const FENCE = /^([ \t]*)(`{3,}|~{3,})(.*)$/
+const HAS_CHART = /(^|\n)[ \t]*(`{3,}|~{3,})[ \t]*(chart|spark)\s*(\n|$)/
+const LIST_ITEM = /^\s*(?:[-*+]|\d{1,9}[.)])\s/
 
-/** The line that closes a block opened by `fence` (same char, at least as long). */
-function closerFor(fence: string): RegExp {
-  return new RegExp(`^\\s{0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`)
+/** The line that closes a block opened by `fence` at `indent` (same char, at least as long). */
+function closerFor(fence: string, indent: number): RegExp {
+  return new RegExp(`^[ \\t]{0,${indent + 3}}${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`)
+}
+
+/** What the scan remembers between lines: the code fence it is inside, and whether a list is open. */
+type Scan = { outer?: RegExp; list?: boolean }
+
+/**
+ * Advances over one line outside any chart block; returns the chart it opens.
+ * A ```chart inside another code fence is an example, not a chart. A fence
+ * indented past 3 columns only counts inside a list: elsewhere it is indented code.
+ */
+function scan(state: Scan, line: string): { closer: RegExp; lang: 'chart' | 'spark' } | undefined {
+  if (state.outer) {
+    if (state.outer.test(line)) state.outer = undefined
+    return undefined
+  }
+  const m = FENCE.exec(line)
+  if (m && (m[1]!.length <= 3 || state.list) && !(m[2]![0] === '`' && m[3]!.includes('`'))) {
+    const closer = closerFor(m[2]!, m[1]!.length)
+    const info = m[3]!.trim()
+    if (info === 'chart' || info === 'spark') return { closer, lang: info }
+    state.outer = closer
+    return undefined
+  }
+  if (LIST_ITEM.test(line)) state.list = true
+  else if (line.trim() && !/^\s/.test(line)) state.list = false
+  return undefined
 }
 
 export type LiveBlock = { key: string; lang: string; body: string; closed: boolean }
-type LiveState = { closer?: RegExp; open?: { key: string; lang: string; body: string[] } }
+type LiveState = Scan & { closer?: RegExp; open?: { key: string; lang: string; body: string[] } }
 
 /** The line the live display shows in place of a block, and finds again at draw time. */
 export const placeholder = (lang: string, key: string) => `◇ ${lang} ${key} · drawing…`
@@ -121,18 +148,19 @@ export function liveDisplay(
       } else state.open.body.push(line)
       continue
     }
-    const m = OPEN.exec(line)
-    if (m) {
+    const chart = scan(state, line)
+    if (chart) {
       changed = true
-      state.closer = closerFor(m[1]!)
-      state.open = { key: alloc(), lang: m[2]!, body: [] }
-      out.push(placeholder(m[2]!, state.open.key))
+      state.closer = chart.closer
+      state.open = { key: alloc(), lang: chart.lang, body: [] }
+      out.push(placeholder(chart.lang, state.open.key))
       continue
     }
     out.push(line)
   }
   if (final && state.open) {
-    finished.push({ ...state.open, body: state.open.body.join('\n'), closed: false })
+    // the reply ended inside the block, so nothing will close it: draw it or report it
+    finished.push({ ...state.open, body: state.open.body.join('\n'), closed: true })
     state.closer = undefined
     state.open = undefined
   }
@@ -147,7 +175,10 @@ export function restoreBlocks(text: string, blocks: Record<string, { lang: strin
     .map(line => {
       const m = PLACEHOLDER.exec(line)
       const b = m ? blocks[m[2]!] : undefined
-      return b ? ['```' + b.lang, b.body, ...(b.closed ? ['```'] : [])].join('\n') : line
+      if (!b) return line
+      // longer than any backtick run in the body, so the body can't close it
+      const fence = '`'.repeat(Math.max(3, ...(b.body.match(/`+/g) ?? []).map(run => run.length + 1)))
+      return [fence + b.lang, b.body, ...(b.closed ? [fence] : [])].join('\n')
     })
     .join('\n')
 }
@@ -160,25 +191,25 @@ export function splitReply(text: string): Segment[] {
     if (md.join('').trim()) out.push({ kind: 'md', text: md.join('\n').replace(/^\n+|\n+$/g, '') })
     md = []
   }
+  const state: Scan = {}
   for (let i = 0; i < lines.length; i++) {
-    const m = OPEN.exec(lines[i]!)
-    if (!m) {
+    const chart = scan(state, lines[i]!)
+    if (!chart) {
       md.push(lines[i]!)
       continue
     }
-    const close = closerFor(m[1]!)
     const body: string[] = []
     let closed = false
     let j = i + 1
     for (; j < lines.length; j++) {
-      if (close.test(lines[j]!)) {
+      if (chart.closer.test(lines[j]!)) {
         closed = true
         break
       }
       body.push(lines[j]!)
     }
     flush()
-    out.push({ kind: 'chart', lang: m[2]!, body: body.join('\n'), closed })
+    out.push({ kind: 'chart', lang: chart.lang, body: body.join('\n'), closed })
     i = j
   }
   flush()
@@ -238,6 +269,8 @@ export const register: Register = on => {
   // teach the model the ```chart format
   on('prompt.compose', async ($, e, next) => {
     const res = await next(e)
+    // only the terminal draws charts: elsewhere (`claude -p`, the SDK, desktop) the JSON would be shown raw
+    if (e.surfaces && !e.surfaces.includes('terminal')) return res
     if (res.sections.some(s => s.id === 'charts:format')) return res
     return { sections: [...res.sections, { id: 'charts:format', text: CHART_PROMPT, scope: 'session' as const }] }
   })
